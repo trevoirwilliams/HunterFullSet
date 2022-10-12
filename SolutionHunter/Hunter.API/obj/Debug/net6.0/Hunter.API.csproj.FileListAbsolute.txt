@@ -296,3 +296,4 @@ E:\HunterFullSet\SolutionHunter\Hunter.API\bin\Debug\net6.0\Microsoft.AspNetCore
 E:\HunterFullSet\SolutionHunter\Hunter.API\bin\Debug\net6.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
 E:\HunterFullSet\SolutionHunter\Hunter.API\bin\Debug\net6.0\Microsoft.Extensions.Identity.Core.dll
 E:\HunterFullSet\SolutionHunter\Hunter.API\bin\Debug\net6.0\Microsoft.Extensions.Identity.Stores.dll
+E:\HunterFullSet\SolutionHunter\Hunter.API\bin\Debug\net6.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll

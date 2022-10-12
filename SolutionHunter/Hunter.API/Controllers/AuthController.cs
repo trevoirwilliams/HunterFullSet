@@ -4,6 +4,10 @@ using Hunter.API.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Hunter.API.Controllers
 {
@@ -14,12 +18,18 @@ namespace Hunter.API.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IMapper _mapper;
         private readonly UserManager<ApiUser> _userManager;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ILogger<AuthController> logger, IMapper mapper, UserManager<ApiUser> userManager)
+        public AuthController(ILogger<AuthController> logger,
+                IMapper mapper,
+                UserManager<ApiUser> userManager,
+                IConfiguration configuration
+            )
         {
             _logger = logger;
             _mapper = mapper;
             _userManager = userManager;
+            _configuration = configuration;
         }
 
         [HttpPost]
@@ -46,7 +56,7 @@ namespace Hunter.API.Controllers
 
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> Login(LoginUserDto userDto)
+        public async Task<ActionResult<AuthResponse>> Login(LoginUserDto userDto)
         {
             try
             {
@@ -54,14 +64,56 @@ namespace Hunter.API.Controllers
                 var passwordValid = await _userManager.CheckPasswordAsync(user, userDto.Password);
                 if (user is null || !passwordValid)
                 {
-                    return NotFound();
+                    return Unauthorized(userDto);
                 }
-                return Accepted();
+
+                string tokenString = await GenerateToken(user);
+
+                var response = new AuthResponse
+                {
+                    UserId = user.Id,
+                    UserName = user.UserName,
+                    Token = tokenString,
+                    KnownAs = user.KnownAs
+                };
+
+                return Accepted(response);
             }
             catch (Exception ex)
             {
                 return Problem($"Something went wrong in the {nameof(Login)}", statusCode: 500);
             }
+        }
+
+        private async Task<string> GenerateToken(ApiUser user)
+        {
+            var securitykey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings.Key"]));
+            var credentials = new SigningCredentials(securitykey, SecurityAlgorithms.HmacSha512);
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var roleClaims = roles.Select(q => new Claim(ClaimTypes.Role, q)).ToList();
+
+            var userClaims = await _userManager.GetClaimsAsync(user);
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Name, user.UserName.ToString()),
+                new Claim("uid", user.Id)
+            }
+            .Union(userClaims)
+            .Union(roleClaims);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JwtSettings:Issuer"],
+                audience: _configuration["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(Convert.ToInt16(_configuration["JwtSettings:Duration"])),
+                signingCredentials: credentials
+             );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
