@@ -87,7 +87,7 @@ namespace Hunter.API.Controllers
 
         private async Task<string> GenerateToken(ApiUser user)
         {
-            var securitykey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings.Key"]));
+            var securitykey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]));
             var credentials = new SigningCredentials(securitykey, SecurityAlgorithms.HmacSha512);
 
             var roles = await _userManager.GetRolesAsync(user);
@@ -109,7 +109,7 @@ namespace Hunter.API.Controllers
                 issuer: _configuration["JwtSettings:Issuer"],
                 audience: _configuration["JwtSettings:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(Convert.ToInt16(_configuration["JwtSettings:Duration"])),
+                expires: DateTime.UtcNow.AddHours(Convert.ToInt16(_configuration["JwtSettings:DurationInHours"])),
                 signingCredentials: credentials
              );
 
